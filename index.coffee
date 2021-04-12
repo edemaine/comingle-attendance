@@ -89,8 +89,7 @@ processLogs = (logs, start, end, rooms) ->
   for id, user of users
     name = user.name() or '?'
     (nameMap[name] ?= []).push user
-  names = sortNames (name for own name of nameMap)
-  for name in names
+  for name in sortNames (name for own name of nameMap)
     time = {}
     admin = false
     for user in nameMap[name]
@@ -100,7 +99,6 @@ processLogs = (logs, start, end, rooms) ->
         time[key] += user.time[key]
     console.log "#{if admin then '@' else ' '}#{name}: #{formatTimeAmount time.inRoom} <= #{formatTimeAmount time.inMeeting}"
     {name, admin, time}
-  users
 
 api = (server, op, query) ->
   url = server
@@ -124,7 +122,8 @@ run = (config) ->
     meeting: config.meeting
     secret: config.secret
   rooms = {}
-  for event in config.events
+  users = {}
+  for event, index in config.events
     start = toDate event.start, timeZone: config.timezone
     end = toDate event.end, timeZone: config.timezone
     console.log '>', event.title, start, end
@@ -133,8 +132,28 @@ run = (config) ->
     unless response.ok
       console.warn "Failed to load event '#{event.title}': #{response.error}"
       continue
-    {users} = processLogs response.logs, start, end, rooms
-  console.log 'ROOMS'
+    eventUsers = processLogs response.logs, start, end, rooms
+    for user in eventUsers
+      (users[user.name] ?= [])[index] = user.time.inRoom
+  ## Write TSV
+  if config.tsv?
+    table = [
+      for event, index in config.events
+        event.title ? index.toString()
+    ]
+    for name in sortNames (name for own name of users)
+      table.push (
+        for time in users[name]
+          if time?
+            time / 1000 / 60  # minutes
+          else
+            ''
+      )
+    table.push []  # add terminating newline
+    fs.writeFileSync config.tsv,
+      (row.join '\t' for row in table).join '\n'
+  ## Room stats
+  console.log '> ROOMS'
   response = await api config.server, 'room/get', Object.assign {}, query,
     rooms: (id for id of rooms)
   unless response.ok
