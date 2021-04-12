@@ -100,7 +100,9 @@ run = (config) ->
     rooms: (id for id of rooms)
   unless response.ok
     return console.warn "Failed to load rooms"
-  for room in response.rooms
+  sortedRooms = (room for room in response.rooms when rooms[room._id]?)
+  .sort (x, y) -> rooms[y._id] - rooms[x._id]
+  for room in sortedRooms
     continue unless rooms[room._id]?
     console.log "#{room.title} [#{room._id}]: #{formatTimeAmount rooms[room._id] ? 0}"
 
