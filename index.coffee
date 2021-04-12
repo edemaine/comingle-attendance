@@ -29,7 +29,24 @@ class User
     ## Choose longest name as canonical, and remove some parentheticals
     (@names().sort (x, y) -> y.length - x.length)[0]
     ?.replace ///\s*\( (TA|\u03a4\u0391|LA|he/him|she/her|) \)\s*///g, ''
-    or '?'
+
+## Sorting by last name, from Coauthor/Comingle
+nameSortKey = (name) ->
+  space = name.lastIndexOf ' '
+  if space >= 0
+    name[space+1..] + ", " + name[...space]
+  else
+    name
+sortNames = (items, item2name = (x) -> x) ->
+  items.sort (x, y) ->
+    x = nameSortKey item2name x
+    y = nameSortKey item2name y
+    if x < y
+      -1
+    else if x > y
+      +1
+    else
+      0
 
 processLogs = (logs, start, end, rooms) ->
   users = {}
@@ -65,9 +82,25 @@ processLogs = (logs, start, end, rooms) ->
   for id, user of users
     elapse user, end
   ## Raw user report from this event
+  #for id, user of users
+  #  console.log "#{if user.admin then '@' else ' '}#{user.name() or '?'} [#{id}]: #{formatTimeAmount user.time.inRoom} <= #{formatTimeAmount user.time.inMeeting}"
+  ## Combine users with same name
+  nameMap = {}
   for id, user of users
-    console.log "#{if user.admin then '@' else ' '}#{user.name() or '?'} [#{id}]: #{formatTimeAmount user.time.inRoom} <= #{formatTimeAmount user.time.inMeeting}"
-  {users}
+    name = user.name() or '?'
+    (nameMap[name] ?= []).push user
+  names = sortNames (name for own name of nameMap)
+  for name in names
+    time = {}
+    admin = false
+    for user in nameMap[name]
+      admin or= user.admin
+      for own key of user.time
+        time[key] ?= 0
+        time[key] += user.time[key]
+    console.log "#{if admin then '@' else ' '}#{name}: #{formatTimeAmount time.inRoom} <= #{formatTimeAmount time.inMeeting}"
+    {name, admin, time}
+  users
 
 api = (server, op, query) ->
   url = server
