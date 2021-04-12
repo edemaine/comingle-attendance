@@ -56,14 +56,17 @@ class User
     ## Choose longest name as canonical, and remove some parentheticals
     (@names().sort (x, y) -> y.length - x.length)[0]
     ?.replace ///\s*\( (TA|\u03a4\u0391|LA|he/him|she/her|) \)\s*///g, ''
+    ?.replace /\\/g, ''  # common typo, I guess because near enter key
+    ?.trim()
 
 ## Sorting by last name, from Coauthor/Comingle
 nameSortKey = (name) ->
   space = name.lastIndexOf ' '
-  if space >= 0
+  (if space >= 0
     name[space+1..] + ", " + name[...space]
   else
     name
+  ).toLowerCase()
 sortNames = (items, item2name = (x) -> x) ->
   items.sort (x, y) ->
     x = nameSortKey item2name x
