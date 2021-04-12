@@ -2,10 +2,15 @@ fs = require 'fs'
 vm = require 'vm'
 fetch = require 'node-fetch'
 add = require 'date-fns/add'
+sub = require 'date-fns/sub'
 {toDate} = require 'date-fns-tz'
 CoffeeScript = require 'coffeescript'
 EJSON = require 'ejson'
 
+defaultEarly = '60m'
+
+## Parse duration of the form "+1d-2h+3m-4s"
+##                         or "+1 day - 2 hours + 3 minutes - 4 seconds"
 parseDuration = (t) ->
   duration =
     days: 0
@@ -26,6 +31,7 @@ parseDuration = (t) ->
         break
   duration
 
+## Convert a number of milliseconds into a number of hours, minutes, and seconds
 formatTimeAmount = (t) ->
   t = Math.round t / 1000  # convert to seconds
   seconds = t % 60
@@ -71,9 +77,11 @@ sortNames = (items, item2name = (x) -> x) ->
 
 processLogs = (logs, start, end, rooms) ->
   users = {}
+  startTime = start.getTime()
   elapse = (user, upto) ->
     return unless user.last?
-    elapsed = upto.getTime() - user.last.getTime()
+    elapsed = upto.getTime() - Math.max startTime, user.last.getTime()
+    return unless elapsed > 0
     user.time.inMeeting += elapsed
     if user.rooms.length
       user.time.inRoom += elapsed
@@ -139,6 +147,7 @@ run = (config) ->
     return console.error "Config file needs key meeting: abc..."
   unless config.secret
     return console.error "Config file needs key secret: abc..."
+  early = parseDuration config.early ? defaultEarly
   query =
     meeting: config.meeting
     secret: config.secret
@@ -151,7 +160,8 @@ run = (config) ->
     end = add end, parseDuration config.adjust.end if config.adjust?.end?
     console.log '>', event.title, start, end
     response = await api config.server, 'log/get', Object.assign {}, query,
-      {start, end}
+      start: sub start, early
+      end: end
     unless response.ok
       console.warn "Failed to load event '#{event.title}': #{response.error}"
       continue
