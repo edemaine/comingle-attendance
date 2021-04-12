@@ -134,16 +134,26 @@ run = (config) ->
       continue
     eventUsers = processLogs response.logs, start, end, rooms
     for user in eventUsers
-      (users[user.name] ?= [])[index] = user.time.inRoom
+      unless users[user.name]?
+        users[user.name] = []
+        users[user.name].name = user.name
+      users[user.name].admin or= user.admin
+      users[user.name][index] = user.time.inRoom
   ## Write TSV
   if config.tsv?
     table = [
-      for event, index in config.events
-        event.title ? index.toString()
+      ['Admin', 'Name'].concat (
+        for event, index in config.events
+          event.title ? index.toString()
+      )
     ]
     for name in sortNames (name for own name of users)
-      table.push (
-        for time in users[name]
+      user = users[name]
+      table.push [
+        if user.admin then '@' else ''
+        user.name
+      ].concat (
+        for time in user
           if time?
             time / 1000 / 60  # minutes
           else
