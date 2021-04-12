@@ -1,9 +1,30 @@
 fs = require 'fs'
 vm = require 'vm'
 fetch = require 'node-fetch'
+add = require 'date-fns/add'
 {toDate} = require 'date-fns-tz'
 CoffeeScript = require 'coffeescript'
 EJSON = require 'ejson'
+
+parseDuration = (t) ->
+  duration =
+    days: 0
+    hours: 0
+    minutes: 0
+    seconds: 0
+  re = ///
+    (
+      (?:[-+]\s*)?  # optional sign
+      \d+           # integer
+    ) \s*
+    ([dhms])        # days/hours/minutes/seconds
+  ///g
+  while (match = re.exec t)?
+    for key of duration
+      if key.startsWith match[2]
+        duration[key] += parseInt match[1]
+        break
+  duration
 
 formatTimeAmount = (t) ->
   t = Math.round t / 1000  # convert to seconds
@@ -125,7 +146,9 @@ run = (config) ->
   users = {}
   for event, index in config.events
     start = toDate event.start, timeZone: config.timezone
+    start = add start, parseDuration config.adjust.start if config.adjust?.start?
     end = toDate event.end, timeZone: config.timezone
+    end = add end, parseDuration config.adjust.end if config.adjust?.end?
     console.log '>', event.title, start, end
     response = await api config.server, 'log/get', Object.assign {}, query,
       {start, end}
