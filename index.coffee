@@ -28,8 +28,18 @@ class User
   longestName: ->
     (@names().sort (x, y) -> y.length - x.length)[0]
 
-processLogs = (logs, start, end) ->
+processLogs = (logs, start, end, rooms) ->
   users = {}
+  elapse = (user, upto) ->
+    return unless user.last?
+    elapsed = upto.getTime() - user.last.getTime()
+    user.time.inMeeting += elapsed
+    if user.rooms.length
+      user.time.inRoom += elapsed
+      for room in user.rooms
+        rooms[room] ?= 0
+        rooms[room] += elapsed
+    undefined
   for log in logs
     continue unless log.type.startsWith 'presence'
     user = users[log.id] ?= new User log.id,
@@ -40,10 +50,7 @@ processLogs = (logs, start, end) ->
     ## Collect names
     user.nameMap[log.name] = true if log.name?
     ## Measure presence time
-    if user.last?
-      user.time.inMeeting += log.updated.getTime() - user.last.getTime()
-      if user.rooms.length
-        user.time.inRoom += log.updated.getTime() - user.last.getTime()
+    elapse user, log.updated
     ## Update user for next log event
     user.rooms = log.rooms.joined if log.rooms?.joined?
     if log.type == 'presenceLeave'
@@ -53,14 +60,14 @@ processLogs = (logs, start, end) ->
       user.last = log.updated
   ## End of logs, but measure presence time for any users still joined
   for id, user of users
-    if user.last?
-      user.time.inMeeting += end.getTime() - user.last.getTime()
-      if user.rooms.length
-        user.time.inRoom += end.getTime() - user.last.getTime()
+    elapse user, end
   for id, user of users
     console.log "#{if user.admin then '@' else ' '}#{user.longestName() or '?'} [#{id}]: #{formatTimeAmount user.time.inRoom} <= #{formatTimeAmount user.time.inMeeting}"
 
-api = (url, query) ->
+api = (server, op, query) ->
+  url = server
+  url += '/' unless url.endsWith '/'
+  url += "api/#{op}"
   response = await fetch url,
     method: 'POST'
     body: EJSON.stringify query
@@ -71,9 +78,6 @@ api = (url, query) ->
 run = (config) ->
   unless config.server
     return console.error "Config file needs key server: https://..."
-  url = config.server
-  url += '/' unless url.endsWith '/'
-  url += 'api/log/get'
   unless config.meeting
     return console.error "Config file needs key meeting: abc..."
   unless config.secret
@@ -81,14 +85,24 @@ run = (config) ->
   query =
     meeting: config.meeting
     secret: config.secret
+  rooms = {}
   for event in config.events
-    query.start = toDate event.start, timeZone: config.timezone
-    query.end = toDate event.end, timeZone: config.timezone
-    response = await api url, query
+    start = toDate event.start, timeZone: config.timezone
+    end = toDate event.end, timeZone: config.timezone
+    response = await api config.server, 'log/get', Object.assign {}, query,
+      {start, end}
     unless response.ok
       console.warn "Failed to load event '#{event.title}': #{response.error}"
       continue
-    processLogs response.logs, query.start, query.end
+    processLogs response.logs, start, end, rooms
+  console.log 'ROOMS'
+  response = await api config.server, 'room/get', Object.assign {}, query,
+    rooms: (id for id of rooms)
+  unless response.ok
+    return console.warn "Failed to load rooms"
+  for room in response.rooms
+    continue unless rooms[room._id]?
+    console.log "#{room.title} [#{room._id}]: #{formatTimeAmount rooms[room._id] ? 0}"
 
 readConfig = (filename) ->
   console.log '*', filename
