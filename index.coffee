@@ -25,8 +25,11 @@ class User
       inRoom: 0
   names: ->
     name for name of @nameMap
-  longestName: ->
+  name: ->
+    ## Choose longest name as canonical, and remove some parentheticals
     (@names().sort (x, y) -> y.length - x.length)[0]
+    ?.replace ///\s*\( (TA|\u03a4\u0391|LA|he/him|she/her|) \)\s*///g, ''
+    or '?'
 
 processLogs = (logs, start, end, rooms) ->
   users = {}
@@ -61,8 +64,10 @@ processLogs = (logs, start, end, rooms) ->
   ## End of logs, but measure presence time for any users still joined
   for id, user of users
     elapse user, end
+  ## Raw user report from this event
   for id, user of users
-    console.log "#{if user.admin then '@' else ' '}#{user.longestName() or '?'} [#{id}]: #{formatTimeAmount user.time.inRoom} <= #{formatTimeAmount user.time.inMeeting}"
+    console.log "#{if user.admin then '@' else ' '}#{user.name() or '?'} [#{id}]: #{formatTimeAmount user.time.inRoom} <= #{formatTimeAmount user.time.inMeeting}"
+  {users}
 
 api = (server, op, query) ->
   url = server
@@ -89,12 +94,13 @@ run = (config) ->
   for event in config.events
     start = toDate event.start, timeZone: config.timezone
     end = toDate event.end, timeZone: config.timezone
+    console.log '>', event.title, start, end
     response = await api config.server, 'log/get', Object.assign {}, query,
       {start, end}
     unless response.ok
       console.warn "Failed to load event '#{event.title}': #{response.error}"
       continue
-    processLogs response.logs, start, end, rooms
+    {users} = processLogs response.logs, start, end, rooms
   console.log 'ROOMS'
   response = await api config.server, 'room/get', Object.assign {}, query,
     rooms: (id for id of rooms)
