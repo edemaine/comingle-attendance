@@ -196,7 +196,8 @@ run = (config) ->
       ].concat (
         for time in user
           if time?
-            time / 1000 / 60  # minutes
+            (time / 1000 / 60)  # minutes
+            .toFixed config.precision ? 0
           else
             ''
       )

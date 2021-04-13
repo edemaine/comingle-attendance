@@ -8,8 +8,13 @@ meeting: 'gLoBaLlYuNiQuEiD7'
 secret: 'sPeCiAlSeCrEtCoDe'
 
 ## If specified, output a TSV spreadsheet with a row for each user name
-## and a column for each event.
+## and a column for each event, where each cell gives a number of minutes.
 #tsv: 'attendance.tsv'
+
+## Number of digits of precision after the decimal point, for the number of
+## minutes in each cell of the spreadsheet.  The default, 0, means round to
+## the nearest integer.
+#precision: 0
 
 ## The default sort order ('name') is case-insensitive sorting of the entire
 ## user name, which usually starts with the first name.  An alternative is to
