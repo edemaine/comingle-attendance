@@ -59,15 +59,20 @@ class User
     ?.replace /\\/g, ''  # common typo, I guess because near enter key
     ?.trim()
 
-## Sorting by last name, from Coauthor/Comingle
-nameSortKey = (name) ->
+lastname = (name) ->
+  ## Sorting by last name, from Coauthor/Comingle
   space = name.lastIndexOf ' '
   (if space >= 0
     name[space+1..] + ", " + name[...space]
   else
     name
   ).toLowerCase()
-sortNames = (items, item2name = (x) -> x) ->
+sortNames = (items, sort, item2name = (x) -> x) ->
+  switch sort
+    when 'lastname'
+      nameSortKey = lastname
+    else 
+      nameSortKey = (name) -> name.toLowerCase()
   items.sort (x, y) ->
     x = nameSortKey item2name x
     y = nameSortKey item2name y
@@ -78,7 +83,7 @@ sortNames = (items, item2name = (x) -> x) ->
     else
       0
 
-processLogs = (logs, start, end, rooms) ->
+processLogs = (logs, start, end, rooms, config) ->
   users = {}
   startTime = start.getTime()
   elapse = (user, upto) ->
@@ -121,7 +126,7 @@ processLogs = (logs, start, end, rooms) ->
   for id, user of users
     name = user.name() or '?'
     (nameMap[name] ?= []).push user
-  for name in sortNames (name for own name of nameMap)
+  for name in sortNames (name for own name of nameMap), config.sort
     time = {}
     admin = false
     for user in nameMap[name]
@@ -168,7 +173,7 @@ run = (config) ->
     unless response.ok
       console.warn "Failed to load event '#{event.title}': #{response.error}"
       continue
-    eventUsers = processLogs response.logs, start, end, rooms
+    eventUsers = processLogs response.logs, start, end, rooms, config
     for user in eventUsers
       unless users[user.name]?
         users[user.name] = []
@@ -183,7 +188,7 @@ run = (config) ->
           event.title ? index.toString()
       )
     ]
-    for name in sortNames (name for own name of users)
+    for name in sortNames (name for own name of users), config.sort
       user = users[name]
       table.push [
         if user.admin then '@' else ''

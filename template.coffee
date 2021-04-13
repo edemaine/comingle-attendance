@@ -7,6 +7,17 @@ meeting: 'gLoBaLlYuNiQuEiD7'
 ## Meeting secret that grants admin access (available under Settings)
 secret: 'sPeCiAlSeCrEtCoDe'
 
+## If specified, output a TSV spreadsheet with a row for each user name
+## and a column for each event.
+#tsv: 'attendance.tsv'
+
+## The default sort order ('name') is case-insensitive sorting of the entire
+## user name, which usually starts with the first name.  An alternative is to
+## sort by 'lastname' (the last word of the name), which can work well if
+## everyone provides a first and last name, but in practice we often see
+## people forgetting their last name sometimes.
+#sort: 'name'
+
 ## Default timezone to interpret start/end times, as IANA tz database key.
 ## See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones for a list.
 ## If you don't specify a timezone, your computer's timezone will be used.
@@ -14,10 +25,6 @@ secret: 'sPeCiAlSeCrEtCoDe'
 ## environment variable.  On Windows, this doesn't work, so be sure that the
 ## TZ environment variable isn't set.)
 #timezone: 'US/Eastern'
-
-## If specified, output a TSV spreadsheet with a row for each user name
-## and a column for each event.
-#tsv: 'attendance.tsv'
 
 ## Adjust every event start or end time by the specified deltas.
 ## For example, MIT classes start 5 minutes after the usually specified time.
