@@ -7,7 +7,7 @@ sub = require 'date-fns/sub'
 CoffeeScript = require 'coffeescript'
 EJSON = require 'ejson'
 
-defaultEarly = '60m'
+defaultEarly = '4h5m'
 
 ## Parse duration of the form "+1d-2h+3m-4s"
 ##                         or "+1 day - 2 hours + 3 minutes - 4 seconds"

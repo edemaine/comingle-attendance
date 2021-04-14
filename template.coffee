@@ -40,13 +40,11 @@ secret: 'sPeCiAlSeCrEtCoDe'
 #  start: '+5m'
 #  end: '+60m'
 
-## Maximum amount of time that a user might show up early to a meeting.
-## For efficiency, we only gather Comingle logs around each event window,
-## but this might mean we miss someone who shows up early (until they change
-## something like switch or star rooms).  By default, we start looking at logs
-## an hour before the start time to detect anyone joining the meeting (but
-## these minutes don't count for attendance).  Adjust as desired.
-#early: '60m'
+## Maximum amount of time that a user might show up "early" to a meeting
+## without generating a "pulse" event.  This should be set to slightly larger
+## than the Comingle server's pulseFrequency (set in server/log.coffee)
+## which defaults to 4 hours, so the default is 4 hours 5 minutes.
+#early: '4h5m'
 
 ## List of events, each with a start time, an end time, and an optional title.
 ## Times are specified in ISO 8601 format: yyyy-mm-ddThh:mm:ss
