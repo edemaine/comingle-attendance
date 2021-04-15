@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "description": "Attendance measurement for Comingle meetings",
   "main": "index.js",
+  "bin": {
+    "comingle-attendance": "index.js"
+  },
   "scripts": {
     "attendance": "coffee attendance.coffee",
     "test": "echo \"Error: no test specified\" && exit 1"

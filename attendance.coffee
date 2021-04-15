@@ -281,4 +281,6 @@ main = ->
   for arg in process.argv[2..]
     await run readConfig arg
 
+module.exports = {defaultEarly, parseDuration, formatTimeAmount, lastname, sortNames, api, run, readConfig, main}
+
 main() if require.main == module
