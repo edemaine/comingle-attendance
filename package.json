@@ -10,7 +10,11 @@
     "type": "git",
     "url": "git+https://github.com/edemaine/comingle-attendance.git"
   },
-  "author": "Erik Demaine",
+  "author": {
+    "name": "Erik Demaine",
+    "email": "edemaine@mit.edu",
+    "url": "http://erikdemaine.org/"
+  },
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/edemaine/comingle-attendance/issues"
