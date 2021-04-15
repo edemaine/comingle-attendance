@@ -42,11 +42,16 @@ formatTimeAmount = (t) ->
   "#{hours}h #{minutes}m #{seconds}s"
 
 class User
-  constructor: (@id, @last) ->
-    @admin = false
-    @nameMap = {}
-    @last              # last presence event, or undefined if left meeting
-    @rooms = []        # rooms currently in
+  constructor: (id) ->
+    if id?
+      @ids = [id]      # list of presence IDs used by this user
+    else
+      @ids = []
+    @admin = false     # was this user ever an admin?
+    @nameMap = {}      # keys store the actual used names
+    @activeId = {}     # keys are presence IDs that are currently active
+    @last = undefined  # Date of last presence event, if currently active
+    @rooms = {}        # map from ID to array of rooms currently in
     @time =
       inMeeting: 0
       inRoom: 0
@@ -58,6 +63,21 @@ class User
     ?.replace ///\s*\( (TA|\u03a4\u0391|LA|he/him|she/her|) \)\s*///g, ''
     ?.replace /\\/g, ''  # common typo, I guess because near enter key
     ?.trim()
+  uniqueRooms: ->
+    roomMap = {}
+    for id, rooms of @rooms
+      roomMap[room] = true for room in rooms
+    Object.keys roomMap
+  active: ->
+    return true for id of @activeId
+    false
+  consume: (other) ->
+    @admin or= other.admin
+    @nameMap[name] = true for name of other.nameMap
+    @ids.push ...other.ids
+    @activeId[id] = true for id of other.activeId
+    for own key of other.time
+      @time[key] += other.time[key]
 
 lastname = (name) ->
   ## Sorting by last name, from Coauthor/Comingle
@@ -84,56 +104,83 @@ sortNames = (items, sort, item2name = (x) -> x) ->
       0
 
 processLogs = (logs, start, end, rooms, config) ->
+  ## In first pass through the logs, find used names for each presence ID,
+  ## and detect whether their first log message isn't a join (so they should be
+  ## considered active at the start).
   users = {}
+  for log in logs
+    continue unless log.type.startsWith 'presence'
+    unless (user = users[log.id])?
+      user = users[log.id] = new User log.id
+      user.activeId[log.id] = true unless log.type == 'presenceJoin'
+    user.nameMap[log.name] = true if log.name?
+
+  ## Merge together users with the same name (assuming they are the
+  ## same people just from different tabs), except for blanks (?).
+  nameMap = {}
+  for id, user of users
+    name = user.name() or '?'
+    name = name.toLowerCase()
+    (nameMap[name] ?= []).push user
+  uniqueUsers = {}
+  uniqueUsers['?'] = new User if nameMap['?']?  # put at top of ordering
+  for name in sortNames Object.keys(nameMap), config.sort
+    continue if name == '?'
+    usersWithName = nameMap[name]
+    user = usersWithName.shift()
+    uniqueUsers[user.name()] = user
+    ## Combine all other users with the same name into `user`
+    for other in usersWithName
+      user.consume other
+      users[other.ids[0]] = user
+
+  ## Simulate empty join at start time if first event isn't join for some ID
+  for id, user of users
+    user.last = start if user.active()
+
+  ## In second pass through the logs, run discrete event simulation and log
+  ## total time that users are active and/or in rooms, as well as room times.
   startTime = start.getTime()
   elapse = (user, upto) ->
     return unless user.last?
     elapsed = upto.getTime() - Math.max startTime, user.last.getTime()
     return unless elapsed > 0
     user.time.inMeeting += elapsed
-    if user.rooms.length
-      user.time.inRoom += elapsed
-      for room in user.rooms
-        rooms[room] ?= 0
-        rooms[room] += elapsed
+    userRooms = user.uniqueRooms()
+    user.time.inRoom += elapsed if userRooms.length
+    for room in userRooms
+      rooms[room] ?= 0
+      rooms[room] += elapsed
     undefined
   for log in logs
     continue unless log.type.startsWith 'presence'
-    user = users[log.id] ?= new User log.id,
-      ## Simulate empty join at start time if first event for user isn't join
-      (start unless log.type == 'presenceJoin')
-    ## Mark a user as admin if they were even an admin
+    user = users[log.id]
+    ## Mark a user as admin if they were ever an admin
     user.admin or= log.admin if log.admin?
-    ## Collect names
-    user.nameMap[log.name] = true if log.name?
     ## Measure presence time
     elapse user, log.updated
     ## Update user for next log event
-    user.rooms = log.rooms.joined if log.rooms?.joined?
     if log.type == 'presenceLeave'
-      user.last = undefined
-      user.rooms = []
+      delete user.activeId[log.id]
+      delete user.rooms[log.id]
     else
+      user.activeId[log.id] = true
+      user.rooms[log.id] = log.rooms.joined if log.rooms?.joined?
+    if user.active()
       user.last = log.updated
+    else
+      user.last = undefined
   ## End of logs, but measure presence time for any users still joined
-  for id, user of users
+  for name, user of uniqueUsers
     elapse user, end
-  ## Raw user report from this event
-  #for id, user of users
-  #  console.log "#{if user.admin then '@' else ' '}#{user.name() or '?'} [#{id}]: #{formatTimeAmount user.time.inRoom} <= #{formatTimeAmount user.time.inMeeting}"
-  ## Combine users with same name
-  nameMap = {}
-  for id, user of users
-    name = user.name() or '?'
-    (nameMap[name] ?= []).push user
-  for name in sortNames (name for own name of nameMap), config.sort
-    time = {}
-    admin = false
-    for user in nameMap[name]
-      admin or= user.admin
-      for own key of user.time
-        time[key] ?= 0
-        time[key] += user.time[key]
+
+  ## Create "unknown" user that sums all '?' users
+  for user in nameMap['?']
+    uniqueUsers['?'].consume user
+
+  ## Output
+  for name, user of uniqueUsers
+    {admin, time} = user
     console.log "#{if admin then '@' else ' '}#{name}: #{formatTimeAmount time.inRoom} <= #{formatTimeAmount time.inMeeting}"
     {name, admin, time}
 
@@ -175,11 +222,12 @@ run = (config) ->
       continue
     eventUsers = processLogs response.logs, start, end, rooms, config
     for user in eventUsers
-      unless users[user.name]?
-        users[user.name] = []
-        users[user.name].name = user.name
-      users[user.name].admin or= user.admin
-      users[user.name][index] = user.time.inRoom
+      name = user.name.toLowerCase()
+      unless users[name]?
+        users[name] = []
+        users[name].name = user.name
+      users[name].admin or= user.admin
+      users[name][index] = user.time.inRoom
   ## Write TSV
   if config.tsv?
     table = [
@@ -188,7 +236,7 @@ run = (config) ->
           event.title ? index.toString()
       )
     ]
-    for name in sortNames (name for own name of users), config.sort
+    for name in sortNames Object.keys(users), config.sort
       user = users[name]
       table.push [
         if user.admin then '@' else ''
