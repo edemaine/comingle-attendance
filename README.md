@@ -17,3 +17,16 @@ participation within each event time block, and can output a spreadsheet with
 a row for each name and a column for each event, where the cell indicates the
 number of minutes of attendance (currently the number of minutes they are in
 at least one room).
+
+## Usage
+
+To run this script from a Git repo clone, do the following:
+
+1. `npm install`
+2. Copy `template.coffee` to `config.coffee` (or some other filename, e.g.,
+   `my-class.coffee`).
+3. Edit `config.coffee` to fill in the specifics for your meeting,
+   in particular the `server` URL, the `meeting` ID, and the meeting `secret`.
+   Read [`template.coffee`](https://github.com/edemaine/comingle-attendance/blob/main/template.coffee)
+   for descriptions of the various options.
+4. `npm run attendance config.coffee`
