@@ -25,8 +25,11 @@ To run this script from a Git repo clone, do the following:
 1. `npm install`
 2. Copy `template.coffee` to `config.coffee` (or some other filename, e.g.,
    `my-class.coffee`).
-3. Edit `config.coffee` to fill in the specifics for your meeting,
-   in particular the `server` URL, the `meeting` ID, and the meeting `secret`.
-   Read [`template.coffee`](https://github.com/edemaine/comingle-attendance/blob/main/template.coffee)
-   for descriptions of the various options.
+3. Edit `config.coffee` to fill in the specifics for your meeting:
+   * In particular, set the `server` URL, the `meeting` ID,
+     and the meeting `secret`; and add `events` you want to track.
+   * Read [`template.coffee`](https://github.com/edemaine/comingle-attendance/blob/main/template.coffee)
+     for descriptions of the various options.
+   * **Do not commit** your config file into Git (or change `template.coffee`),
+     or risk your meeting and its secret leaking to the world.
 4. `npm run attendance config.coffee`

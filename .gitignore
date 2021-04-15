@@ -1,3 +1,11 @@
+# Avoid committing any other configuration files and their outputs
+*.coffee
+!attendance.coffee
+!template.coffee
+*.js
+!index.js
+*.tsv
+
 # Logs
 logs
 *.log
