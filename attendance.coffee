@@ -149,8 +149,11 @@ processLogs = (logs, start, end, rooms, config) ->
     userRooms = user.uniqueRooms()
     user.time.inRoom += elapsed if userRooms.length
     for room in userRooms
-      rooms[room] ?= 0
-      rooms[room] += elapsed
+      rooms[room] ?=
+        _id: room
+        title: 'INVALID ROOM'
+        time: occupied: 0
+      rooms[room].time.occupied += elapsed
     undefined
   for log in logs
     continue unless log.type.startsWith 'presence'
@@ -206,7 +209,16 @@ run = (config) ->
   query =
     meeting: config.meeting
     secret: config.secret
+  ## Load data for rooms in meeting
   rooms = {}
+  response = await api config.server, 'room/get', query
+  unless response.ok
+    return console.warn "Failed to load rooms"
+  for room in response.rooms
+    rooms[room._id] = room
+    room.time =
+      occupied: 0
+  ## Load and process logs
   users = {}
   for event, index in config.events
     start = toDate event.start, timeZone: config.timezone
@@ -254,15 +266,10 @@ run = (config) ->
       (row.join '\t' for row in table).join '\n'
   ## Room stats
   console.log '> ROOMS'
-  response = await api config.server, 'room/get', Object.assign {}, query,
-    rooms: (id for id of rooms)
-  unless response.ok
-    return console.warn "Failed to load rooms"
-  sortedRooms = (room for room in response.rooms when rooms[room._id]?)
-  .sort (x, y) -> rooms[y._id] - rooms[x._id]
+  sortedRooms = Object.values rooms
+  .sort (x, y) -> y.time.occupied - x.time.occupied
   for room in sortedRooms
-    continue unless rooms[room._id]?
-    console.log "#{room.title} [#{room._id}]: #{formatTimeAmount rooms[room._id] ? 0}"
+    console.log "#{room.title} [#{room._id}]: #{formatTimeAmount room.time.occupied}"
 
 readConfig = (filename) ->
   console.log '*', filename
