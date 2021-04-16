@@ -297,25 +297,30 @@ run = (config) ->
         users[name][key] ?= []
         users[name][key][index] = value
   ## Write TSV files
+  formatAsMinutes = (time) ->
+    if time?
+      (time / 1000 / 60)  # minutes
+      .toFixed config.precision ? 0
+    else
+      ''
   for output in config.output ? []
     table = [
-      ['Admin', 'Name'].concat (
+      ['Admin', 'Name', 'Total'].concat (
         for event, index in config.events
           event.title ? index.toString()
       )
     ]
     for name in sortNames Object.keys(users), config.sort
       user = users[name]
+      total = 0
+      total += time for time in user[output.user] when time?
       table.push [
         if user.admin then '@' else ''
         user.name
+        formatAsMinutes total
       ].concat (
         for time in user[output.user]
-          if time?
-            (time / 1000 / 60)  # minutes
-            .toFixed config.precision ? 0
-          else
-            ''
+          formatAsMinutes time
       )
     table.push []  # add terminating newline
     fs.writeFileSync output.tsv,
