@@ -1,6 +1,6 @@
 {
   "name": "comingle-attendance",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "Attendance measurement for Comingle meetings",
   "main": "index.js",
   "bin": {

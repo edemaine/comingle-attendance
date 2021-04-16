@@ -11,6 +11,16 @@ secret: 'sPeCiAlSeCrEtCoDe'
 ## and a column for each event, where each cell gives a number of minutes.
 #tsv: 'attendance.tsv'
 
+## Include/exclude pattern for rooms to count as users being "in a room".
+## Use this in particular to ignore uninteresting rooms.
+#inRoom:
+#  exclude: /bad title pattern/
+#  include: [
+#    /title pattern/
+#    'Room Title'
+#    (room) -> room._id.endsWith 'abc'
+#  ]
+
 ## Number of digits of precision after the decimal point, for the number of
 ## minutes in each cell of the spreadsheet.  The default, 0, means round to
 ## the nearest integer.

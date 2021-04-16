@@ -65,6 +65,35 @@ sortNames = (items, sort, item2name = (x) -> x) ->
     else
       0
 
+applyCheck = (check, target, toString, inverted) ->
+  if check.constructor.name == 'RegExp'
+    check.test toString target
+  else if check instanceof Function
+    check target
+  else if typeof check == 'string'
+    check == toString target
+  else if Array.isArray check
+    if inverted
+      check.some (part) -> applyCheck part, target, toString
+    else
+      check.every (part) -> applyCheck part, target, toString
+  else
+    console.error "Invalid filter #{check}"
+
+applyFilter = (list, filter, toString) ->
+  return unless filter?
+  return unless filter.exclude? or filter.include?
+  for key of filter
+    switch key
+      when 'exclude'
+        oldList = list
+        list = list.filter (item) ->
+          not applyCheck filter.exclude, item, toString, true
+      when 'include'
+        list = list.filter (item) ->
+          applyCheck filter.include, item, toString
+  list
+
 class User
   constructor: (id) ->
     if id?
@@ -147,6 +176,8 @@ processLogs = (logs, start, end, rooms, config) ->
     return unless elapsed > 0
     user.time.inMeeting += elapsed
     userRooms = user.uniqueRooms()
+    userRooms = applyFilter userRooms, config.inRoom, (room) ->
+      rooms[room]?.title ? room
     user.time.inRoom += elapsed if userRooms.length
     for room in userRooms
       rooms[room] ?=
