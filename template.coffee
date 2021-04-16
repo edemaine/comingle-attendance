@@ -8,11 +8,15 @@ meeting: 'gLoBaLlYuNiQuEiD7'
 secret: 'sPeCiAlSeCrEtCoDe'
 
 ## Output a TSV spreadsheet for each specification in this array.
-## Each spreadsheet has a row for each user name and a column for each event.
+## Each spreadsheet has a column for each event,
+## and a row for each user name or for each room.
 ## Each cell gives a number of minutes, either:
-##   * 'inMeeting': In the meeting in any form (not necessarily in a room)
-##   * 'inRoom': In the meeting and in some room
-##   * 'inCompany': In the meeting and in some room with another user
+##   * `user` table:
+##     * 'inMeeting': In the meeting in any form (not necessarily in a room)
+##     * 'inRoom': In the meeting and in some room
+##     * 'inCompany': In the meeting and in some room with another user
+##   * `room` table:
+##     * 'occupied': Occupied by at least one user
 output: [
 #  tsv: 'attendance-inMeeting.tsv'
 #  user: 'inMeeting'
@@ -22,6 +26,9 @@ output: [
 #,
 #  tsv: 'attendance-inCompany.tsv'
 #  user: 'inCompany'
+#,
+#  tsv: 'rooms-occupied.tsv'
+#  room: 'occupied'
 ]
 
 ## Include/exclude pattern for rooms to count as users being "in a room".
@@ -44,6 +51,7 @@ output: [
 ## sort by 'lastname' (the last word of the name), which can work well if
 ## everyone provides a first and last name, but in practice we often see
 ## people forgetting their last name sometimes.
+## This setting can also be overridden within a user entry of `output`.
 #sort: 'name'
 
 ## Default timezone to interpret start/end times, as IANA tz database key.

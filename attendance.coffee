@@ -136,16 +136,21 @@ class User
 class Room
   constructor: (data) ->
     @[key] = value for key, value of data when key not in ['joined']
-    @time =
+    @total =
       occupied: 0
-    @resetJoined()
-  resetJoined: ->
+    @time = {}
+    @row = {}
+    @reset()
+  reset: ->
+    for key of @total
+      @total[key] += @time[key] if @time[key]?
+      @time[key] = 0
     @joinedIds = {}
   joined: ->
     Object.keys @joinedIds
 
 processLogs = (logs, start, end, rooms, config) ->
-  room.resetJoined() for room in rooms
+  room.reset() for id, room of rooms
   ## In first pass through the logs, find used names for each presence ID,
   ## and detect whether their first log message isn't a join (so they should be
   ## considered active at the start).
@@ -291,11 +296,17 @@ run = (config) ->
     eventUsers = processLogs response.logs, start, end, rooms, config
     for user in eventUsers
       name = user.name.toLowerCase()
-      users[name] ?= name: user.name
+      users[name] ?=
+        name: user.name
+        row: {}
       users[name].admin or= user.admin
       for key, value of user.time
-        users[name][key] ?= []
-        users[name][key][index] = value
+        users[name].row[key] ?= []
+        users[name].row[key][index] = value
+    for id, room of rooms
+      for key, value of room.time
+        room.row[key] ?= []
+        room.row[key][index] = value
   ## Write TSV files
   formatAsMinutes = (time) ->
     if time?
@@ -305,30 +316,46 @@ run = (config) ->
       ''
   for output in config.output ? []
     table = [
-      ['Admin', 'Name', 'Total'].concat (
+      (if output.user?
+        ['Admin', 'Name', 'Total']
+      else if output.room?
+        ['ID', 'Title', 'Total']
+      ).concat (
         for event, index in config.events
           event.title ? index.toString()
       )
     ]
-    for name in sortNames Object.keys(users), config.sort
-      user = users[name]
-      total = 0
-      total += time for time in user[output.user] when time?
-      table.push [
-        if user.admin then '@' else ''
-        user.name
-        formatAsMinutes total
-      ].concat (
-        for time in user[output.user]
-          formatAsMinutes time
-      )
+    if output.user?
+      for name in sortNames Object.keys(users), output.sort ? config.sort
+        user = users[name]
+        total = 0
+        total += time for time in user.row[output.user] when time?
+        table.push [
+          if user.admin then '@' else ''
+          user.name
+          formatAsMinutes total
+        ].concat (
+          for time in user.row[output.user]
+            formatAsMinutes time
+        )
+    else if output.room?
+      for room in Object.values(rooms).sort (x, y) -> y.total[output.room] - x.total[output.room]
+        console.log room.row, output.room, room.row[output.room]
+        table.push [
+          room._id
+          room.title
+          formatAsMinutes room.total[output.room]
+        ].concat (
+          for time in room.row[output.room]
+            formatAsMinutes time
+        )
     table.push []  # add terminating newline
     fs.writeFileSync output.tsv,
       (row.join '\t' for row in table).join '\n'
   ## Room stats
   console.log '> ROOMS'
   sortedRooms = Object.values rooms
-  .sort (x, y) -> y.time.occupied - x.time.occupied
+  .sort (x, y) -> y.total.occupied - x.total.occupied
   for room in sortedRooms
     console.log "#{room.title} [#{room._id}]: #{formatTimeAmount room.time.occupied}"
 
