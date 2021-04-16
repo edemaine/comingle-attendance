@@ -41,6 +41,30 @@ formatTimeAmount = (t) ->
   hours = t
   "#{hours}h #{minutes}m #{seconds}s"
 
+lastname = (name) ->
+  ## Sorting by last name, from Coauthor/Comingle
+  space = name.lastIndexOf ' '
+  (if space >= 0
+    name[space+1..] + ", " + name[...space]
+  else
+    name
+  ).toLowerCase()
+sortNames = (items, sort, item2name = (x) -> x) ->
+  switch sort
+    when 'lastname'
+      nameSortKey = lastname
+    else
+      nameSortKey = (name) -> name.toLowerCase()
+  items.sort (x, y) ->
+    x = nameSortKey item2name x
+    y = nameSortKey item2name y
+    if x < y
+      -1
+    else if x > y
+      +1
+    else
+      0
+
 class User
   constructor: (id) ->
     if id?
@@ -78,30 +102,6 @@ class User
     @activeId[id] = true for id of other.activeId
     for own key of other.time
       @time[key] += other.time[key]
-
-lastname = (name) ->
-  ## Sorting by last name, from Coauthor/Comingle
-  space = name.lastIndexOf ' '
-  (if space >= 0
-    name[space+1..] + ", " + name[...space]
-  else
-    name
-  ).toLowerCase()
-sortNames = (items, sort, item2name = (x) -> x) ->
-  switch sort
-    when 'lastname'
-      nameSortKey = lastname
-    else 
-      nameSortKey = (name) -> name.toLowerCase()
-  items.sort (x, y) ->
-    x = nameSortKey item2name x
-    y = nameSortKey item2name y
-    if x < y
-      -1
-    else if x > y
-      +1
-    else
-      0
 
 processLogs = (logs, start, end, rooms, config) ->
   ## In first pass through the logs, find used names for each presence ID,
