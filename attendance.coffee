@@ -291,13 +291,13 @@ run = (config) ->
     eventUsers = processLogs response.logs, start, end, rooms, config
     for user in eventUsers
       name = user.name.toLowerCase()
-      unless users[name]?
-        users[name] = []
-        users[name].name = user.name
+      users[name] ?= name: user.name
       users[name].admin or= user.admin
-      users[name][index] = user.time.inRoom
-  ## Write TSV
-  if config.tsv?
+      for key, value of user.time
+        users[name][key] ?= []
+        users[name][key][index] = value
+  ## Write TSV files
+  for output in config.output ? []
     table = [
       ['Admin', 'Name'].concat (
         for event, index in config.events
@@ -310,7 +310,7 @@ run = (config) ->
         if user.admin then '@' else ''
         user.name
       ].concat (
-        for time in user
+        for time in user[output.user]
           if time?
             (time / 1000 / 60)  # minutes
             .toFixed config.precision ? 0
@@ -318,7 +318,7 @@ run = (config) ->
             ''
       )
     table.push []  # add terminating newline
-    fs.writeFileSync config.tsv,
+    fs.writeFileSync output.tsv,
       (row.join '\t' for row in table).join '\n'
   ## Room stats
   console.log '> ROOMS'

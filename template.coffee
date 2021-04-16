@@ -7,9 +7,22 @@ meeting: 'gLoBaLlYuNiQuEiD7'
 ## Meeting secret that grants admin access (available under Settings)
 secret: 'sPeCiAlSeCrEtCoDe'
 
-## If specified, output a TSV spreadsheet with a row for each user name
-## and a column for each event, where each cell gives a number of minutes.
-#tsv: 'attendance.tsv'
+## Output a TSV spreadsheet for each specification in this array.
+## Each spreadsheet has a row for each user name and a column for each event.
+## Each cell gives a number of minutes, either:
+##   * 'inMeeting': In the meeting in any form (not necessarily in a room)
+##   * 'inRoom': In the meeting and in some room
+##   * 'inCompany': In the meeting and in some room with another user
+output: [
+#  tsv: 'attendance-inMeeting.tsv'
+#  user: 'inMeeting'
+#,
+#  tsv: 'attendance-inRoom.tsv'
+#  user: 'inRoom'
+#,
+#  tsv: 'attendance-inCompany.tsv'
+#  user: 'inCompany'
+]
 
 ## Include/exclude pattern for rooms to count as users being "in a room".
 ## Use this in particular to ignore uninteresting rooms.
