@@ -132,6 +132,12 @@ class User
     for own key of other.time
       @time[key] += other.time[key]
 
+class Room
+  constructor: (data) ->
+    @[key] = value for key, value of data
+    @time =
+      occupied: 0
+
 processLogs = (logs, start, end, rooms, config) ->
   ## In first pass through the logs, find used names for each presence ID,
   ## and detect whether their first log message isn't a join (so they should be
@@ -180,10 +186,9 @@ processLogs = (logs, start, end, rooms, config) ->
       rooms[room]?.title ? room
     user.time.inRoom += elapsed if userRooms.length
     for room in userRooms
-      rooms[room] ?=
+      rooms[room] ?= new Room
         _id: room
         title: 'INVALID ROOM'
-        time: occupied: 0
       rooms[room].time.occupied += elapsed
     undefined
   for log in logs
@@ -246,9 +251,7 @@ run = (config) ->
   unless response.ok
     return console.warn "Failed to load rooms"
   for room in response.rooms
-    rooms[room._id] = room
-    room.time =
-      occupied: 0
+    rooms[room._id] = new Room room
   ## Load and process logs
   users = {}
   for event, index in config.events
