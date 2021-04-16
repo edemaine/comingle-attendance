@@ -108,6 +108,7 @@ class User
     @time =
       inMeeting: 0
       inRoom: 0
+      inCompany: 0
   names: ->
     name for name of @nameMap
   name: ->
@@ -134,11 +135,17 @@ class User
 
 class Room
   constructor: (data) ->
-    @[key] = value for key, value of data
+    @[key] = value for key, value of data when key not in ['joined']
     @time =
       occupied: 0
+    @resetJoined()
+  resetJoined: ->
+    @joinedIds = {}
+  joined: ->
+    Object.keys @joinedIds
 
 processLogs = (logs, start, end, rooms, config) ->
+  room.resetJoined() for room in rooms
   ## In first pass through the logs, find used names for each presence ID,
   ## and detect whether their first log message isn't a join (so they should be
   ## considered active at the start).
@@ -184,7 +191,12 @@ processLogs = (logs, start, end, rooms, config) ->
     userRooms = user.uniqueRooms()
     userRooms = applyFilter userRooms, config.inRoom, (room) ->
       rooms[room]?.title ? room
-    user.time.inRoom += elapsed if userRooms.length
+    if userRooms.length
+      user.time.inRoom += elapsed
+      if (userRooms.some (room) ->
+            rooms[room]?.joined().some (other) ->
+              other not in user.ids)
+        user.time.inCompany += elapsed
     for room in userRooms
       rooms[room] ?= new Room
         _id: room
@@ -201,10 +213,17 @@ processLogs = (logs, start, end, rooms, config) ->
     ## Update user for next log event
     if log.type == 'presenceLeave'
       delete user.activeId[log.id]
+      for room in user.rooms[log.id] ? []
+        delete rooms[room]?.joinedIds[log.id]
       delete user.rooms[log.id]
     else
       user.activeId[log.id] = true
-      user.rooms[log.id] = log.rooms.joined if log.rooms?.joined?
+      if log.rooms?.joined?
+        for room in user.rooms[log.id] ? []
+          delete rooms[room]?.joinedIds[log.id]
+        user.rooms[log.id] = log.rooms.joined
+        for room in user.rooms[log.id]
+          rooms[room]?.joinedIds[log.id] = true
     if user.active()
       user.last = log.updated
     else
@@ -220,7 +239,10 @@ processLogs = (logs, start, end, rooms, config) ->
   ## Output
   for name, user of uniqueUsers
     {admin, time} = user
-    console.log "#{if admin then '@' else ' '}#{name}: #{formatTimeAmount time.inRoom} <= #{formatTimeAmount time.inMeeting}"
+    console.log "#{if admin then '@' else ' '}#{name}: " +
+      "#{formatTimeAmount time.inCompany} in company, " +
+      "#{formatTimeAmount time.inRoom} in room, " +
+      "#{formatTimeAmount time.inMeeting} in meeting"
     {name, admin, time}
 
 api = (server, op, query) ->
