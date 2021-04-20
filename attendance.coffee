@@ -340,7 +340,6 @@ run = (config) ->
         )
     else if output.room?
       for room in Object.values(rooms).sort (x, y) -> y.total[output.room] - x.total[output.room]
-        console.log room.row, output.room, room.row[output.room]
         table.push [
           room._id
           room.title
