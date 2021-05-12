@@ -111,6 +111,7 @@ class User
     @admin = false     # was this user ever an admin?
     @nameMap = {}      # keys store the actual used names
     @activeId = {}     # keys are presence IDs that are currently active
+    @logs = 0          # number of non-pulse log events, for idle detection
     @last = undefined  # Date of last presence event, if currently active
     @rooms = {}        # map from ID to array of rooms currently in
     @time =
@@ -138,6 +139,7 @@ class User
     @nameMap[name] = true for name of other.nameMap
     @ids.push ...other.ids
     @activeId[id] = true for id of other.activeId
+    @logs += other.logs
     for own key of other.time
       @time[key] += other.time[key]
 
@@ -158,10 +160,15 @@ class Room
     Object.keys @joinedIds
 
 processLogs = (logs, start, end, rooms, config) ->
+  startTime = start.getTime()
+  idleTime = (sub start, parseDuration config.idle).getTime() if config.idle?
   room.reset() for id, room of rooms
-  ## In first pass through the logs, find used names for each presence ID,
-  ## and detect whether their first log message isn't a join (so they should be
-  ## considered active at the start).
+
+  ## In first pass through the logs:
+  ##  * Find used names for each presence ID.
+  ##  * Detect whether their first log message isn't a join
+  ##    (so they should be considered active at the start).
+  ##  * Count log messages within idle window for detecting idle users.
   users = {}
   for log in logs
     continue unless log.type.startsWith 'presence'
@@ -169,6 +176,16 @@ processLogs = (logs, start, end, rooms, config) ->
       user = users[log.id] = new User log.id
       user.activeId[log.id] = true unless log.type == 'presenceJoin'
     user.nameMap[log.name] = true if log.name?
+    if idleTime? and log.updated.getTime() >= idleTime
+      user.logs++ unless log.type == 'presencePulse'
+      user.roomsSample = log.rooms if log.rooms?
+
+  ## Drop idle users
+  if idleTime?
+    for [id, user] in Object.entries users  # avoid modifying while iterating
+      unless user.logs
+        console.log "Dropping idle user #{user.ids[0]} (#{user.name()})", if user.roomsSample?.joined? then "in rooms #{user.roomsSample.joined.join ', '}" else 'not in any rooms'
+        delete users[id]
 
   ## Merge together users with the same name (assuming they are the
   ## same people just from different tabs), except for blanks (?).
@@ -195,7 +212,6 @@ processLogs = (logs, start, end, rooms, config) ->
 
   ## In second pass through the logs, run discrete event simulation and log
   ## total time that users are active and/or in rooms, as well as room times.
-  startTime = start.getTime()
   elapse = (user, upto) ->
     return unless user.last?
     elapsed = upto.getTime() - Math.max startTime, user.last.getTime()
@@ -218,6 +234,7 @@ processLogs = (logs, start, end, rooms, config) ->
   for log in logs
     continue unless log.type.startsWith 'presence'
     user = users[log.id]
+    continue unless user?  # deleted idle user
     ## Mark a user as admin if they were ever an admin
     user.admin or= log.admin if log.admin?
     ## Measure presence time

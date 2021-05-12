@@ -84,6 +84,12 @@ output: [
 ## which defaults to 4 hours, so the default is 4 hours 5 minutes.
 #early: '4h5m'
 
+## If specified, ignore users who are present but idle during the entire event
+## time window plus the specified amount of time in the `early` buffer.
+## So if a user triggers no Comingle event in the window [start - idle, end],
+## then that user (or user instance) is removed from all consideration.
+#idle: '5m'
+
 ## List of events, each with a start time, an end time, and an optional title.
 ## Times are specified in ISO 8601 format: yyyy-mm-ddThh:mm:ss
 ## If a time ends with Z, it will be interpreted in UTC timezone.
