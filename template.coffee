@@ -32,7 +32,8 @@ output: [
 ]
 
 ## Include/exclude pattern for rooms to count as users being "in a room".
-## Use this in particular to ignore uninteresting rooms.
+## Use this in particular to ignore uninteresting rooms.  To help debug,
+## the `room: 'occupied'` TSV file will show which rooms are filtered.
 #inRoom:
 #  exclude: [
 #    title: /bad title pattern/

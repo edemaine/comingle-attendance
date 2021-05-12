@@ -85,7 +85,7 @@ applyCheck = (check, target, inverted) ->
   else
     console.error "Invalid filter #{check}"
 
-applyFilter = (list, filter, toFilter) ->
+applyFilter = (list, filter, toFilter = (x) -> x) ->
   return unless filter?
   return unless filter.exclude? or filter.include?
   for key of filter  # process filters in order by specification
@@ -202,6 +202,11 @@ processLogs = (logs, start, end, rooms, config) ->
     return unless elapsed > 0
     user.time.inMeeting += elapsed
     userRooms = user.uniqueRooms()
+    for room in userRooms
+      rooms[room] ?= new Room
+        _id: room
+        title: 'INVALID ROOM'
+      rooms[room].time.occupied += elapsed
     userRooms = applyFilter userRooms, config.inRoom, (room) -> rooms[room]
     if userRooms.length
       user.time.inRoom += elapsed
@@ -209,11 +214,6 @@ processLogs = (logs, start, end, rooms, config) ->
             rooms[room]?.joined().some (other) ->
               other not in user.ids)
         user.time.inCompany += elapsed
-    for room in userRooms
-      rooms[room] ?= new Room
-        _id: room
-        title: 'INVALID ROOM'
-      rooms[room].time.occupied += elapsed
     undefined
   for log in logs
     continue unless log.type.startsWith 'presence'
@@ -326,7 +326,7 @@ run = (config) ->
       (if output.user?
         ['Admin', 'Name', 'Total']
       else if output.room?
-        ['ID', 'Title', 'Total']
+        ['ID', 'Title', 'Filter', 'Total']
       ).concat (
         for event, index in config.events
           event.title ? index.toString()
@@ -350,6 +350,7 @@ run = (config) ->
         table.push [
           room._id
           room.title
+          if (applyFilter [room], config.inRoom).length then 'included' else 'excluded'
           formatAsMinutes room.total[output.room]
         ].concat (
           for time in room.row[output.room]
