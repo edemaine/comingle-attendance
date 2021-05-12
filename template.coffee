@@ -34,10 +34,16 @@ output: [
 ## Include/exclude pattern for rooms to count as users being "in a room".
 ## Use this in particular to ignore uninteresting rooms.
 #inRoom:
-#  exclude: /bad title pattern/
+#  exclude: [
+#    title: /bad title pattern/
+#  ,
+#    title: 'Bad Title'
+#  ,
+#    deleted: true  # exclude all deleted rooms
+#  ]
 #  include: [
-#    /title pattern/
-#    'Room Title'
+#    title: /good title pattern/
+#  ,
 #    (room) -> room._id.endsWith 'abc'
 #  ]
 

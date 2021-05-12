@@ -65,33 +65,41 @@ sortNames = (items, sort, item2name = (x) -> x) ->
     else
       0
 
-applyCheck = (check, target, toString, inverted) ->
+applyCheck = (check, target, inverted) ->
   if check.constructor.name == 'RegExp'
-    check.test toString target
+    check.test target
   else if check instanceof Function
     check target
-  else if typeof check == 'string'
-    check == toString target
+  else if typeof check == 'string'  # exact string match
+    check == target
+  else if typeof check == 'boolean'
+    check == Boolean target
   else if Array.isArray check
     if inverted
-      check.some (part) -> applyCheck part, target, toString
+      check.some (part) -> applyCheck part, target
     else
-      check.every (part) -> applyCheck part, target, toString
+      check.every (part) -> applyCheck part, target
+  else if Object.keys(check).length
+    Object.keys(check).every (key) ->
+      applyCheck check[key], target[key], inverted
   else
     console.error "Invalid filter #{check}"
 
-applyFilter = (list, filter, toString) ->
+applyFilter = (list, filter, toFilter) ->
   return unless filter?
   return unless filter.exclude? or filter.include?
-  for key of filter
+  for key of filter  # process filters in order by specification
     switch key
       when 'exclude'
-        oldList = list
         list = list.filter (item) ->
-          not applyCheck filter.exclude, item, toString, true
+          target = toFilter item
+          return false unless target?
+          not applyCheck filter.exclude, target, true
       when 'include'
         list = list.filter (item) ->
-          applyCheck filter.include, item, toString
+          target = toFilter item
+          return true unless target?
+          applyCheck filter.include, target
   list
 
 class User
@@ -194,8 +202,7 @@ processLogs = (logs, start, end, rooms, config) ->
     return unless elapsed > 0
     user.time.inMeeting += elapsed
     userRooms = user.uniqueRooms()
-    userRooms = applyFilter userRooms, config.inRoom, (room) ->
-      rooms[room]?.title ? room
+    userRooms = applyFilter userRooms, config.inRoom, (room) -> rooms[room]
     if userRooms.length
       user.time.inRoom += elapsed
       if (userRooms.some (room) ->
