@@ -238,7 +238,7 @@ processLogs = (logs, start, end, rooms, config) ->
     elapse user, end
 
   ## Create "unknown" user that sums all '?' users
-  for user in nameMap['?']
+  for user in nameMap['?'] ? []
     uniqueUsers['?'].consume user
 
   ## Output
