@@ -352,6 +352,20 @@ run = (config) ->
       )
     ]
     if output.user?
+      grandTotal = 0
+      eventTotals =
+        for event, index in config.events
+          total = 0
+          for user in Object.values users
+            total += user.row[output.user][index] ? 0
+          grandTotal += total
+          formatAsMinutes total
+      table.push [
+        '-----'
+        'Total:'
+        formatAsMinutes grandTotal
+        ...eventTotals
+      ]
       for name in sortNames Object.keys(users), output.sort ? config.sort
         user = users[name]
         total = 0
