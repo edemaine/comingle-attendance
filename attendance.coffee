@@ -331,6 +331,8 @@ run = (config) ->
       for key, value of room.time
         room.row[key] ?= []
         room.row[key][index] = value
+  ## Complete room totals
+  room.reset() for id, room of rooms
   ## Write TSV files
   formatAsMinutes = (time) ->
     if time?
