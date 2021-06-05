@@ -310,7 +310,9 @@ run = (config) ->
     start = add start, parseDuration config.adjust.start if config.adjust?.start?
     end = toDate event.end, timeZone: config.timezone
     end = add end, parseDuration config.adjust.end if config.adjust?.end?
-    console.log '>', event.title, start, end
+    console.log '>', event.title, start, '..', end, "= #{formatTimeAmount end.getTime() - start.getTime()}"
+    if end.getTime() <= start.getTime()
+      console.log 'WARNING: Negative duration event! End time before start time!'
     response = await api config.server, 'log/get', Object.assign {}, query,
       start: sub start, early
       end: end
