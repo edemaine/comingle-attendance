@@ -351,21 +351,26 @@ run = (config) ->
           event.title ? index.toString()
       )
     ]
-    if output.user?
+    eventTotalsRow = (title, subtitle, measure, things) ->
       grandTotal = 0
-      eventTotals =
+      totals =
         for event, index in config.events
           total = 0
-          for user in Object.values users
-            total += user.row[output.user][index] ? 0
+          for thing in things
+            total += thing.row[measure][index] ? 0
           grandTotal += total
           formatAsMinutes total
-      table.push [
+      row = [
         '-----'
-        'Total:'
+        title
+        subtitle
         formatAsMinutes grandTotal
-        ...eventTotals
+        ...totals
       ]
+      row[2..2] = [] unless subtitle?
+      table.push row
+    if output.user?
+      eventTotalsRow 'Total:', null, output.user, Object.values users
       for name in sortNames Object.keys(users), output.sort ? config.sort
         user = users[name]
         total = 0
@@ -379,6 +384,13 @@ run = (config) ->
             formatAsMinutes time
         )
     else if output.room?
+      eventTotalsRow 'Total:', '', output.room, Object.values rooms
+      eventTotalsRow 'Total:', 'included', output.room,
+        (room for id, room of rooms \
+         when (applyFilter [room], config.inRoom).length)
+      eventTotalsRow 'Total:', 'excluded', output.room,
+        (room for id, room of rooms \
+         when not (applyFilter [room], config.inRoom).length)
       for room in Object.values(rooms).sort (x, y) -> y.total[output.room] - x.total[output.room]
         table.push [
           room._id
