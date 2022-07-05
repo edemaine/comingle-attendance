@@ -29,6 +29,6 @@
     "date-fns": "2.21.1",
     "date-fns-tz": "1.1.4",
     "ejson": "2.2.1",
-    "node-fetch": "2.6.1"
+    "node-fetch": "2.6.7"
   }
 }
