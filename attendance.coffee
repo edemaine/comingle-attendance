@@ -411,7 +411,7 @@ run = (config) ->
   sortedRooms = Object.values rooms
   .sort (x, y) -> y.total.occupied - x.total.occupied
   for room in sortedRooms
-    console.log "#{room.title} [#{room._id}]: #{formatTimeAmount room.time.occupied}"
+    console.log "#{room.title} [#{room._id}]: #{formatTimeAmount room.total.occupied}"
 
 readConfig = (filename) ->
   console.log '*', filename
