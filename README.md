@@ -60,3 +60,16 @@ do one of the following from the command line:
    npm install
    npm run attendance config.coffee
    ```
+
+## Tips
+
+If you want to get a list of all of meetings on your Comingle server,
+so you know where to measure attendance/usage (for overall statistics),
+run the following command in your Comingle MongoDB shell:
+
+```js
+db.log.aggregate([
+  {$match: {updated: {$gt: ISODate("2023-01-01")}}}, // recently used meetings
+  {$group: {_id: "$meeting"}}, // get set of unique meeting ids
+]).map(({_id}) => db.meetings.findOne({_id})) // look up meeting data
+```
