@@ -38,7 +38,10 @@ formatTimeAmount = (t) ->
   t = Math.floor t / 60
   minutes = t % 60
   t = Math.floor t / 60
-  hours = t
+  hours = t % 24
+  t = Math.floor t / 24
+  days = t % 24
+  (if days then "#{days}d " else '') +
   "#{hours}h #{minutes}m #{seconds}s"
 
 lastname = (name) ->
@@ -148,6 +151,7 @@ class Room
     @[key] = value for key, value of data when key not in ['joined']
     @total =
       occupied: 0
+      usage: 0
     @time = {}
     @row = {}
     @reset()
@@ -158,6 +162,8 @@ class Room
     @joinedIds = {}
   joined: ->
     Object.keys @joinedIds
+  numJoined: ->
+    @joined().length
 
 processLogs = (logs, start, end, rooms, config) ->
   startTime = start.getTime()
@@ -223,6 +229,7 @@ processLogs = (logs, start, end, rooms, config) ->
         _id: room
         title: 'INVALID ROOM'
       rooms[room].time.occupied += elapsed
+      rooms[room].time.usage += elapsed * rooms[room].numJoined()
     userRooms = applyFilter userRooms, config.inRoom, (room) -> rooms[room]
     if userRooms.length
       user.time.inRoom += elapsed
@@ -407,11 +414,17 @@ run = (config) ->
     fs.writeFileSync output.tsv,
       (row.join '\t' for row in table).join '\n'
   ## Room stats
-  console.log '> ROOMS'
-  sortedRooms = Object.values rooms
-  .sort (x, y) -> y.total.occupied - x.total.occupied
-  for room in sortedRooms
-    console.log "#{room.title} [#{room._id}]: #{formatTimeAmount room.total.occupied}"
+  roomTotal = {}
+  for field in ['occupied', 'usage']
+    console.log "> ROOMS by #{field}"
+    sortedRooms = Object.values rooms
+    .sort (x, y) -> y.total[field] - x.total[field]
+    roomTotal[field] = 0
+    for room in sortedRooms
+      console.log "#{room.title} [#{room._id}]: #{formatTimeAmount room.total[field]}"
+      roomTotal[field] += room.total[field]
+    console.log "TOTAL: #{formatTimeAmount roomTotal[field]}"
+  console.log "Average occupied room size:", roomTotal.usage / roomTotal.occupied
 
 readConfig = (filename) ->
   console.log '*', filename

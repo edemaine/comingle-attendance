@@ -17,6 +17,9 @@ secret: 'sPeCiAlSeCrEtCoDe'
 ##     * 'inCompany': In the meeting and in some room with another user
 ##   * `room` table:
 ##     * 'occupied': Occupied by at least one user
+##       (n users for m minutes counts as m minutes, when n > 0)
+##     * 'usage': Total occupancy by users
+##       (n users for m minute counts as n m minutes)
 output: [
 #  tsv: 'attendance-inMeeting.tsv'
 #  user: 'inMeeting'
@@ -29,6 +32,9 @@ output: [
 #,
 #  tsv: 'rooms-occupied.tsv'
 #  room: 'occupied'
+#,
+#  tsv: 'rooms-usage.tsv'
+#  room: 'usage'
 ]
 
 ## Include/exclude pattern for rooms to count as users being "in a room".
